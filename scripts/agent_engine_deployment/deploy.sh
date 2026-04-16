@@ -42,7 +42,7 @@ export OTEL_SERVICE_NAME=$AGENT_NAME
 export OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
 
 echo "Deploying $AGENT_NAME to Vertex AI Agent Engine..."
-adk deploy agent_engine \
+uv run adk deploy agent_engine \
         --project=$PROJECT_ID \
         --region=$LOCATION_ID \
         --display_name=$AGENT_NAME \
