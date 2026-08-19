@@ -3,7 +3,7 @@
 import logging
 import os
 
-import google.cloud.logging
+import wikipedia
 from dotenv import load_dotenv
 from google.adk import Agent
 from google.adk.agents import LoopAgent, ParallelAgent, SequentialAgent
@@ -15,19 +15,33 @@ from langchain_community.tools import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from vertexai.preview import reasoning_engines
 
-from .callback_logging import log_model_response, log_query_to_model
+from .callback_logging import (
+    log_model_response,
+    log_query_to_model,
+    setup_logging,
+    use_vertexai,
+)
 
 load_dotenv()
 
 # Settings
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
-LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "europe-west1")
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
 MODEL_NAME = os.getenv("MODEL")
 
-cloud_logging_client = google.cloud.logging.Client(project=PROJECT_ID)
-cloud_logging_client.setup_logging()
+setup_logging(PROJECT_ID)
 
 os.environ["ADK_TRACE_ENABLED"] = "true"
+
+# The wikipedia package (1.4.0, 2014) ships a generic User-Agent over plain HTTP.
+# Wikimedia now rejects that with a 403 and a plain-text body, which surfaces as
+# "JSONDecodeError: Expecting value: line 1 column 1 (char 0)" when the library
+# tries to parse the response. A descriptive User-Agent over HTTPS is what their
+# policy asks for: https://phabricator.wikimedia.org/T400119
+wikipedia.wikipedia.API_URL = "https://en.wikipedia.org/w/api.php"
+wikipedia.wikipedia.USER_AGENT = (
+    "example-agents/0.1 (https://github.com/danielvogler/example_agents)"
+)
 
 logging.info("MODEL_NAME: %s", MODEL_NAME)
 logging.info("GOOGLE_CLOUD_PROJECT: %s", PROJECT_ID)
@@ -258,4 +272,10 @@ root_agent = Agent(
     sub_agents=[film_concept_team],
 )
 
-app = reasoning_engines.AdkApp(agent=root_agent, enable_tracing=True)
+# Only used when deploying to Vertex AI Agent Engine, which requires a
+# Google Cloud project. Left as None when running on an AI Studio API key.
+app = (
+    reasoning_engines.AdkApp(agent=root_agent, enable_tracing=True)
+    if use_vertexai() and PROJECT_ID
+    else None
+)

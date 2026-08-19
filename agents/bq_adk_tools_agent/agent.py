@@ -4,7 +4,7 @@ import logging
 import os
 
 import google.auth
-import google.cloud.logging
+import google.auth.exceptions
 from dotenv import load_dotenv
 from google.adk.agents.llm_agent import LlmAgent
 from google.adk.auth.auth_credential import AuthCredentialTypes
@@ -13,19 +13,20 @@ from google.adk.tools.bigquery.bigquery_toolset import BigQueryToolset
 from google.adk.tools.bigquery.config import BigQueryToolConfig, WriteMode
 from vertexai.preview import reasoning_engines
 
+from .callback_logging import setup_logging, use_vertexai
+
 # Load environment variables
 load_dotenv()
 
 # Configuration
 MODEL_NAME = os.getenv("MODEL")
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
-LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "europe-west1")
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
 AGENT_NAME = os.getenv("AGENT_NAME", "bq_data_agent")
 CREDENTIALS_TYPE = os.getenv("CREDENTIALS_TYPE")
 
 # Set up Google Cloud Logging
-cloud_logging_client = google.cloud.logging.Client(project=PROJECT_ID)
-cloud_logging_client.setup_logging()
+setup_logging(PROJECT_ID)
 
 os.environ["ADK_TRACE_ENABLED"] = "true"
 
@@ -51,7 +52,16 @@ elif CREDENTIALS_TYPE == AuthCredentialTypes.SERVICE_ACCOUNT:
     credentials_config = BigQueryCredentialsConfig(credentials=creds)
 else:
     # Initialize the tools to use the application default credentials.
-    application_default_credentials, _ = google.auth.default()
+    try:
+        application_default_credentials, _ = google.auth.default()
+    except google.auth.exceptions.DefaultCredentialsError as exc:
+        raise RuntimeError(
+            "This agent queries BigQuery and therefore needs a Google Cloud "
+            "account - a Google AI Studio API key is not enough. Run "
+            "'gcloud auth application-default login', or pick one of the "
+            "agents that do not use BigQuery (workflow_agents, state_agent, "
+            "parent_and_subagents). See AGENTS.md for details."
+        ) from exc
     credentials_config = BigQueryCredentialsConfig(
         credentials=application_default_credentials
     )
@@ -74,4 +84,10 @@ root_agent = LlmAgent(
     tools=[bigquery_toolset],
 )
 
-app = reasoning_engines.AdkApp(agent=root_agent, enable_tracing=True)
+# Only used when deploying to Vertex AI Agent Engine, which requires a
+# Google Cloud project. Left as None when running on an AI Studio API key.
+app = (
+    reasoning_engines.AdkApp(agent=root_agent, enable_tracing=True)
+    if use_vertexai() and PROJECT_ID
+    else None
+)

@@ -10,6 +10,35 @@
 
 This repository provides a set of sample agents using Google GenAI SDK and ADK. It demonstrates how to create, run, and deploy intelligent AI agents.
 
+## Quickstart
+
+**Never set this up before?** Open the repository (or just this URL) in an AI coding agent
+such as Claude Code and tell it:
+
+> Follow AGENTS.md and get this running.
+
+[`AGENTS.md`](./AGENTS.md) is a complete setup runbook — it downloads the repo (git not
+required), installs `uv` and Python if they are missing, installs dependencies, walks
+through Google Cloud authentication, verifies everything, and starts the agents.
+
+**Doing it by hand** — no Google Cloud account needed:
+
+```bash
+./scripts/bootstrap.sh          # installs uv, Python, dependencies, creates .env
+# in .env: set GOOGLE_GENAI_USE_VERTEXAI=FALSE and GOOGLE_API_KEY=<key>
+#          get a free key at https://aistudio.google.com/apikey
+./scripts/doctor.sh             # verifies everything before you run anything
+make run-web                    # then open http://localhost:8000
+```
+
+That runs `workflow_agents`, `state_agent`, and `parent_and_subagents`. The two BigQuery
+agents and deployment to Agent Engine need a Google Cloud project instead — see
+[Setup](#setup).
+
+Something broken? Run `./scripts/doctor.sh` — it checks the toolchain, config and
+credentials, then makes one real model call to confirm the setup actually works, naming
+the problem and the fix for anything that does not.
+
 ## Structure
 
 All agent projects are located in the `agents/` directory:
@@ -18,34 +47,51 @@ All agent projects are located in the `agents/` directory:
 - `bq_adk_tools_agent/` - Complex BigQuery Data Agent powered by Google native ADK tools
 - `parent_and_subagents/` - Multi-agent setup with Parent and Sub-agents
 - `state_agent/` - Agent managing conversation state
-- `workflow_agents/` - Complex workflow using Sequential, Loop, and Parallel Agents
+- `workflow_agents/` - Complex workflow using Sequential, Loop, and Parallel Agents — [diagrams and walkthrough](agents/workflow_agents/README.md)
 
 ## Setup
 
-Before proceeding, ensure you have the [Google Cloud CLI (`gcloud`)](https://cloud.google.com/sdk/docs/install) installed and configured with your project.
+Run the bootstrap script; it is idempotent and safe to re-run.
 
 ```bash
-# Login to Google Cloud
+./scripts/bootstrap.sh
+```
+
+It installs [`uv`](https://docs.astral.sh/uv/) (and a Python 3.12+ interpreter if the
+machine has none), syncs dependencies from `uv.lock`, creates `.env` from `.env.example`,
+and installs the pre-commit hooks.
+
+Then pick a backend in `.env` — the file documents both at the top:
+
+| | Option A — AI Studio API key | Option B — Google Cloud project |
+| --- | --- | --- |
+| Needs | A Google account | A GCP project with billing |
+| Cost | Free tier | Pay per use |
+| Agents | The three non-BigQuery agents | All five |
+| Agent Engine deploy | No | Yes |
+
+For **Option A**, set `GOOGLE_GENAI_USE_VERTEXAI=FALSE` and `GOOGLE_API_KEY` (from
+<https://aistudio.google.com/apikey>) and you are done.
+
+For **Option B**, set `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, and `MODEL`. The
+agents then authenticate with Application Default Credentials, so you also need the
+[Google Cloud CLI](https://cloud.google.com/sdk/docs/install):
+
+```bash
 gcloud auth login
-
-# Set your application default credentials (required for local runs)
 gcloud auth application-default login
-
-# Set your active project
 gcloud config set project YOUR_PROJECT_ID
 ```
 
-We use `uv` for dependency management. To set up the Python project:
+Verify the whole setup before running an agent:
 
 ```bash
-make setup
+./scripts/doctor.sh
 ```
-
-Configure your environment variables by copying `.env.example` to `.env` and setting `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, and `MODEL`.
 
 ## Running Agents Locally
 
-You can run the agents locally using the Google ADK CLI via our provided Makefile which safely suppresses annoying C++ gRPC logging spam.
+You can run the agents locally using the Google ADK CLI via our provided Makefile, which points ADK at the `agents/` directory and suppresses the C++ gRPC logging spam.
 
 To run a specific agent in your terminal:
 ```bash
@@ -81,3 +127,5 @@ Run linting, typechecking, and formatting:
 ```bash
 make check
 ```
+
+For the full setup, troubleshooting, and contribution conventions, see [AGENTS.md](./AGENTS.md).
