@@ -31,7 +31,9 @@ if [ -f ".env" ]; then
 fi
 
 PROJECT_ID=${GOOGLE_CLOUD_PROJECT:-"YOUR_PROJECT_ID"}
-LOCATION_ID=${GOOGLE_CLOUD_LOCATION:-"europe-west1"}
+# Agent Engine deploys to a concrete region. GOOGLE_CLOUD_LOCATION may be
+# "global" for model calls, which is not a deployment target.
+LOCATION_ID=${AGENT_ENGINE_LOCATION:-"europe-west1"}
 
 # TRACING
 export GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY=true

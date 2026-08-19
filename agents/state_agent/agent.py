@@ -15,7 +15,7 @@ from .callback_logging import setup_logging, use_vertexai
 load_dotenv()
 
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
-LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
 MODEL_NAME = os.getenv("MODEL")
 
 # init

@@ -69,7 +69,7 @@ if [ -f .env ]; then
       ok "GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}"
     fi
 
-    ok "GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-<unset, agents default to europe-west1>}"
+    ok "GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-<unset, agents default to global>}"
   else
     ok "backend: Google AI Studio API key (no Google Cloud account needed)"
 
@@ -83,7 +83,7 @@ if [ -f .env ]; then
 
   if [ -z "${MODEL:-}" ]; then
     bad "MODEL is unset"
-    hint "Edit .env and set MODEL=gemini-2.5-flash"
+    hint "Edit .env and set MODEL=gemini-3.6-flash"
   else
     ok "MODEL=${MODEL}"
   fi
@@ -141,7 +141,7 @@ load_dotenv(dotenv_path=".env")
 
 from google import genai
 
-model = os.getenv("MODEL", "gemini-2.5-flash")
+model = os.getenv("MODEL", "gemini-3.6-flash")
 use_vertex = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "TRUE").strip().upper() == "TRUE"
 
 try:
@@ -149,7 +149,7 @@ try:
         client = genai.Client(
             vertexai=True,
             project=os.environ["GOOGLE_CLOUD_PROJECT"],
-            location=os.getenv("GOOGLE_CLOUD_LOCATION", "europe-west1"),
+            location=os.getenv("GOOGLE_CLOUD_LOCATION", "global"),
         )
     else:
         client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
@@ -166,7 +166,8 @@ PYEOF
       ;;
     *404*)
       bad "model '$MODEL' is not available in region '${GOOGLE_CLOUD_LOCATION:-unset}'"
-      hint "Pick a region that serves it, e.g. GOOGLE_CLOUD_LOCATION=europe-west1"
+      hint "Gemini 3.x needs GOOGLE_CLOUD_LOCATION=global; no EU region serves it"
+      hint "For an EU region use europe-west1 with MODEL=gemini-2.5-flash"
       hint "Remember to set CLOUD_ML_REGION to the same value."
       hint "Regions: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations"
       ;;

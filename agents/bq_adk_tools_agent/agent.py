@@ -21,7 +21,7 @@ load_dotenv()
 # Configuration
 MODEL_NAME = os.getenv("MODEL")
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
-LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "europe-west1")
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
 AGENT_NAME = os.getenv("AGENT_NAME", "bq_data_agent")
 CREDENTIALS_TYPE = os.getenv("CREDENTIALS_TYPE")
 

@@ -125,8 +125,8 @@ in the file wins, and leaving both active silently sends the user back to Vertex
 | Variable | Set it to | Notes |
 | --- | --- | --- |
 | `GOOGLE_CLOUD_PROJECT` | Their project ID | Starts as the placeholder `your-gcp-project`. `gcloud projects list` shows what they can see |
-| `GOOGLE_CLOUD_LOCATION` | A region, e.g. `europe-west1` | Also set `CLOUD_ML_REGION` to the same value |
-| `MODEL` | `gemini-2.5-flash` | Already set; a good default |
+| `GOOGLE_CLOUD_LOCATION` | `global` | Also set `CLOUD_ML_REGION` to the same value. Gemini 3.x is only served on `global` |
+| `MODEL` | `gemini-3.6-flash` | Already set; a good default |
 
 Ask the user for their project ID rather than guessing it. `.env` is gitignored and must
 stay that way — **never commit it, and never put a service-account key file anywhere in
@@ -177,9 +177,18 @@ import time, so a missing credential surfaces as a confusing stack trace rather 
 error.
 
 The live call is what catches the failure that looks like success: **a model that is not
-served in the configured region.** `gemini-2.5-flash` works in `europe-west1`, `europe-west4`
-and `us-central1`, but returns 404 in `europe-west6`, and nothing in the static config hints
-at that. Set `GOOGLE_CLOUD_LOCATION` and `CLOUD_ML_REGION` to the same working region.
+served in the configured region.** Region coverage is uneven and nothing in the static
+config hints at it:
+
+| Model | Where it is served |
+| --- | --- |
+| `gemini-3.6-flash` (default) | `global` only — **no EU region serves any Gemini 3.x** |
+| `gemini-2.5-flash` | `europe-west1`, `europe-west4`, `us-central1`, `global` |
+| anything | **not** `europe-west6` — Zurich serves no Gemini models at all |
+
+Set `GOOGLE_CLOUD_LOCATION` and `CLOUD_ML_REGION` to the same value. `global` routes
+requests worldwide; if the user needs EU data residency, use `europe-west1` and accept
+`gemini-2.5-flash` as the newest model available there.
 
 The call costs a fraction of a cent. Use `SKIP_LIVE=1 ./scripts/doctor.sh` to skip it when
 offline.
@@ -246,7 +255,7 @@ Google account — no cloud project, no billing, no `gcloud` install, no card.
    ```bash
    GOOGLE_GENAI_USE_VERTEXAI=FALSE
    GOOGLE_API_KEY=<the key>
-   MODEL=gemini-2.5-flash
+   MODEL=gemini-3.6-flash
    ```
 
    Comment out the `GOOGLE_GENAI_USE_VERTEXAI=TRUE` line above it.
@@ -326,7 +335,9 @@ Read these before making changes.
 ```
 
 This generates `requirements.txt` from `pyproject.toml`, copies it and `.env` into the agent
-folder, and runs `adk deploy agent_engine`. It creates billable cloud resources — confirm
+folder, and runs `adk deploy agent_engine`. Deployment targets `AGENT_ENGINE_LOCATION`
+(default `europe-west1`) rather than `GOOGLE_CLOUD_LOCATION`, because the latter may be
+`global`, which is a model-serving endpoint rather than a deployment region. It creates billable cloud resources — confirm
 with the user before running it.
 
 ---
@@ -344,7 +355,7 @@ with the user before running it.
 | Web UI dropdown lists `scripts` and `tests` | `adk web` started from the wrong directory | Use `make run-web`, which points ADK at `agents/` |
 | Port 8000 already in use | Something else is on it | `uv run adk web agents --port 8080` |
 | `ValueError: No root_agent found for 'agents'` | `adk run` was given the parent folder | `make run-agent AGENT=state_agent` — `adk run` takes one agent folder, `adk web` takes the parent |
-| `404 ... model was not found` | Model not served in that region | Set `GOOGLE_CLOUD_LOCATION` **and** `CLOUD_ML_REGION` to `europe-west1`; `europe-west6` does not serve Gemini |
+| `404 ... model was not found` | Model not served in that region | Gemini 3.x needs `GOOGLE_CLOUD_LOCATION=global`. For an EU region use `europe-west1` with `MODEL=gemini-2.5-flash`. `europe-west6` serves no Gemini models |
 | Walls of `E0000 ... grpc` output | gRPC C++ logging | Cosmetic. The `make` targets already suppress it |
 | `pre-commit` fails: not a git repository | Repo downloaded as an archive | Expected. Agents still run; install git and clone if you want to commit |
 
