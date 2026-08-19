@@ -11,42 +11,47 @@ It exists to show the three ADK workflow primitives working together in one grap
 ## The hierarchy
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif','fontSize':'14px','lineColor':'#86868b','edgeLabelBackground':'#ffffff','primaryTextColor':'#1d1d1f'}}}%%
 flowchart TD
-    user(["User"]) --> greeter
+    user(["User"]) --> intake
 
-    greeter["greeter<br/>captures the idea"]
-
-    subgraph team["film_concept_team · Sequential"]
+    subgraph greeter["greeter · root_agent"]
         direction TB
 
-        subgraph room["writers_room · Loop, up to 5 passes"]
+        intake["greeter's own turn<br/>captures the idea"]
+
+        subgraph team["film_concept_team"]
             direction TB
-            researcher["researcher<br/>looks it up on Wikipedia"]
-            screenwriter["screenwriter<br/>logline + three-act outline"]
-            critic["critic<br/>approve, or send back"]
-            researcher --> screenwriter --> critic
+
+            subgraph room["writers_room · 5 passes"]
+                direction TB
+                researcher["researcher<br/>looks it up on Wikipedia"]
+                screenwriter["screenwriter<br/>logline + three-act outline"]
+                critic["critic<br/>approve, or send back"]
+                researcher --> screenwriter --> critic
+            end
+
+            subgraph pre["preproduction_team"]
+                direction TB
+                box["box_office_researcher"]
+                cast["casting_agent"]
+            end
+
+            writer["file_writer<br/>saves the pitch document"]
         end
 
-        subgraph pre["preproduction_team · Parallel"]
-            direction TB
-            box["box_office_researcher"]
-            cast["casting_agent"]
-        end
-
-        writer["file_writer<br/>saves the pitch document"]
+        intake ==>|"transfer_to_agent"| team
     end
 
-    greeter --> room
     critic -.->|"not there yet"| researcher
     room -->|"exit_loop"| pre
     pre --> writer
 
     classDef leaf fill:#ffffff,stroke:#d2d2d7,stroke-width:1.5px,color:#1d1d1f
     classDef entry fill:#f5f5f7,stroke:#86868b,stroke-width:1.5px,color:#1d1d1f
-    class greeter,researcher,screenwriter,critic,box,cast,writer leaf
+    class intake,researcher,screenwriter,critic,box,cast,writer leaf
     class user entry
 
+    style greeter fill:#ffffff,stroke:#1d1d1f,stroke-width:2px,color:#1d1d1f,stroke-dasharray: 6 4
     style team fill:#f5f9ff,stroke:#0071e3,stroke-width:1.5px,color:#1d1d1f
     style room fill:#fff9f0,stroke:#ff9f0a,stroke-width:1.5px,color:#1d1d1f
     style pre fill:#f2fbf5,stroke:#34c759,stroke-width:1.5px,color:#1d1d1f
@@ -57,12 +62,13 @@ flowchart TD
 | 🟦 | `SequentialAgent` | one after another, in order |
 | 🟧 | `LoopAgent` | over and over, until `exit_loop` or the cap |
 | 🟩 | `ParallelAgent` | all at once, then joins |
+| ⬛ | `LlmAgent` with `sub_agents` | **dashed** — the model decides when to hand off via `transfer_to_agent`, and control does not come back |
 
 ## What runs when
 
 | # | Agent | Type | Does |
 | --- | --- | --- | --- |
-| 1 | `greeter` | LlmAgent | Asks the user for a historical figure, stores the answer |
+| 1 | `greeter` | **LlmAgent — `root_agent`** | Asks the user for a historical figure, stores the answer, then hands off |
 | 2 | `researcher` | LlmAgent | Wikipedia lookup for facts to write from |
 | 3 | `screenwriter` | LlmAgent | Writes a logline and three-act outline |
 | 4 | `critic` | LlmAgent | Reviews it — calls `exit_loop` when it is good enough |
@@ -77,9 +83,8 @@ Agents never call each other directly. They read and write keys on shared sessio
 which is what lets the loop accumulate work across passes.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif','fontSize':'14px','lineColor':'#86868b','edgeLabelBackground':'#ffffff','primaryTextColor':'#1d1d1f'}}}%%
 flowchart TD
-    greeter["greeter"] --> k1(["PROMPT"])
+    greeter["greeter · root_agent"] --> k1(["PROMPT"])
     k1 --> researcher["researcher"] --> k2(["research"])
     k2 --> screenwriter["screenwriter"] --> k3(["PLOT_OUTLINE"])
     k3 --> critic["critic"] --> k4(["CRITICAL_FEEDBACK"])
