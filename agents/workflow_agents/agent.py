@@ -3,6 +3,7 @@
 import logging
 import os
 
+import wikipedia
 from dotenv import load_dotenv
 from google.adk import Agent
 from google.adk.agents import LoopAgent, ParallelAgent, SequentialAgent
@@ -31,6 +32,16 @@ MODEL_NAME = os.getenv("MODEL")
 setup_logging(PROJECT_ID)
 
 os.environ["ADK_TRACE_ENABLED"] = "true"
+
+# The wikipedia package (1.4.0, 2014) ships a generic User-Agent over plain HTTP.
+# Wikimedia now rejects that with a 403 and a plain-text body, which surfaces as
+# "JSONDecodeError: Expecting value: line 1 column 1 (char 0)" when the library
+# tries to parse the response. A descriptive User-Agent over HTTPS is what their
+# policy asks for: https://phabricator.wikimedia.org/T400119
+wikipedia.wikipedia.API_URL = "https://en.wikipedia.org/w/api.php"
+wikipedia.wikipedia.USER_AGENT = (
+    "example-agents/0.1 (https://github.com/danielvogler/example_agents)"
+)
 
 logging.info("MODEL_NAME: %s", MODEL_NAME)
 logging.info("GOOGLE_CLOUD_PROJECT: %s", PROJECT_ID)

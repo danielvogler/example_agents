@@ -356,6 +356,7 @@ with the user before running it.
 | Port 8000 already in use | Something else is on it | `uv run adk web agents --port 8080` |
 | `ValueError: No root_agent found for 'agents'` | `adk run` was given the parent folder | `make run-agent AGENT=state_agent` — `adk run` takes one agent folder, `adk web` takes the parent |
 | `404 ... model was not found` | Model not served in that region | Gemini 3.x needs `GOOGLE_CLOUD_LOCATION=global`. For an EU region use `europe-west1` with `MODEL=gemini-2.5-flash`. `europe-west6` serves no Gemini models |
+| `Error: Expecting value: line 1 column 1 (char 0)` in `workflow_agents` | Wikimedia rejects the `wikipedia` package's default User-Agent with a 403 text/plain body | Already patched in `agents/workflow_agents/agent.py`; keep the `USER_AGENT`/`API_URL` override if you copy the tool elsewhere |
 | Walls of `E0000 ... grpc` output | gRPC C++ logging | Cosmetic. The `make` targets already suppress it |
 | `pre-commit` fails: not a git repository | Repo downloaded as an archive | Expected. Agents still run; install git and clone if you want to commit |
 
