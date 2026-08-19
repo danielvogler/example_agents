@@ -5,7 +5,6 @@ import os
 from datetime import date, datetime
 from typing import Dict, List
 
-import google.cloud.logging
 from dotenv import load_dotenv
 from google.adk import Agent
 from google.api_core import exceptions
@@ -16,24 +15,29 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from vertexai.preview import reasoning_engines
 
+from .callback_logging import setup_logging, use_vertexai
+
 load_dotenv()
 
 
-# Set up OpenTelemetry to export traces to Google Cloud
-tracer_provider = TracerProvider()
-cloud_trace_exporter = CloudTraceSpanExporter()
-tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
-trace.set_tracer_provider(tracer_provider)
-
-os.environ["ADK_OTEL_TRACER_PROVIDER"] = "opentelemetry.trace.get_tracer_provider"
+# Set up OpenTelemetry to export traces to Google Cloud. This needs Application
+# Default Credentials, so it is skipped when they are unavailable rather than
+# failing the import.
+try:
+    tracer_provider = TracerProvider()
+    cloud_trace_exporter = CloudTraceSpanExporter()
+    tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
+    trace.set_tracer_provider(tracer_provider)
+    os.environ["ADK_OTEL_TRACER_PROVIDER"] = "opentelemetry.trace.get_tracer_provider"
+except Exception as exc:  # missing credentials, disabled API, offline, ...
+    logging.warning("Cloud Trace unavailable (%s). Continuing without tracing.", exc)
 
 # Settings
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "europe-west1")
 MODEL_NAME = os.getenv("MODEL")
 
-cloud_logging_client = google.cloud.logging.Client(project=PROJECT_ID)
-cloud_logging_client.setup_logging()
+setup_logging(PROJECT_ID)
 
 os.environ["ADK_TRACE_ENABLED"] = "true"
 
@@ -162,7 +166,10 @@ root_agent = Agent(
     ],
 )
 
-app = reasoning_engines.AdkApp(
-    agent=root_agent,
-    enable_tracing=True,
+# Only used when deploying to Vertex AI Agent Engine, which requires a
+# Google Cloud project. Left as None when running on an AI Studio API key.
+app = (
+    reasoning_engines.AdkApp(agent=root_agent, enable_tracing=True)
+    if use_vertexai() and PROJECT_ID
+    else None
 )

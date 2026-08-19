@@ -3,7 +3,6 @@
 import logging
 import os
 
-import google.cloud.logging
 from dotenv import load_dotenv
 from google.adk import Agent
 from google.adk.agents import LoopAgent, ParallelAgent, SequentialAgent
@@ -15,7 +14,12 @@ from langchain_community.tools import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from vertexai.preview import reasoning_engines
 
-from .callback_logging import log_model_response, log_query_to_model
+from .callback_logging import (
+    log_model_response,
+    log_query_to_model,
+    setup_logging,
+    use_vertexai,
+)
 
 load_dotenv()
 
@@ -24,8 +28,7 @@ PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "europe-west1")
 MODEL_NAME = os.getenv("MODEL")
 
-cloud_logging_client = google.cloud.logging.Client(project=PROJECT_ID)
-cloud_logging_client.setup_logging()
+setup_logging(PROJECT_ID)
 
 os.environ["ADK_TRACE_ENABLED"] = "true"
 
@@ -258,4 +261,10 @@ root_agent = Agent(
     sub_agents=[film_concept_team],
 )
 
-app = reasoning_engines.AdkApp(agent=root_agent, enable_tracing=True)
+# Only used when deploying to Vertex AI Agent Engine, which requires a
+# Google Cloud project. Left as None when running on an AI Studio API key.
+app = (
+    reasoning_engines.AdkApp(agent=root_agent, enable_tracing=True)
+    if use_vertexai() and PROJECT_ID
+    else None
+)
