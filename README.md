@@ -47,7 +47,7 @@ All agent projects are located in the `agents/` directory:
 - `bq_adk_tools_agent/` - Complex BigQuery Data Agent powered by Google native ADK tools
 - `parent_and_subagents/` - Multi-agent setup with Parent and Sub-agents
 - `state_agent/` - Agent managing conversation state
-- `workflow_agents/` - Complex workflow using Sequential, Loop, and Parallel Agents
+- `workflow_agents/` - Complex workflow using Sequential, Loop, and Parallel Agents — [diagrams and walkthrough](agents/workflow_agents/README.md)
 
 ## Setup
 
